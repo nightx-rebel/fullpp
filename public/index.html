@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WhatsApp Profile Setter</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Design tokens ────────────────────────────────────────────── */
+    :root {
+      --bg:       #0a0f0d;
+      --surface:  #111a15;
+      --border:   #1e2e22;
+      --green:    #25d366;
+      --green2:   #128c7e;
+      --lime:     #a8ff78;
+      --text:     #e8f5ea;
+      --muted:    #5a7a60;
+      --danger:   #ff5b5b;
+      --radius:   14px;
+      --glow:     0 0 40px rgba(37,211,102,.18);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Sora', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      overflow-x: hidden;
+    }
+
+    /* Animated background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(37,211,102,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(37,211,102,.04) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Card ─────────────────────────────────────────────────────── */
+    .card {
+      position: relative;
+      z-index: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 48px 44px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: var(--glow), 0 32px 80px rgba(0,0,0,.6);
+      animation: cardIn .55s cubic-bezier(.22,1,.36,1) both;
+    }
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(28px) scale(.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ── Logo / Header ────────────────────────────────────────────── */
+    .logo-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+    .logo-icon {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, var(--green), var(--green2));
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 0 24px rgba(37,211,102,.35);
+    }
+    .logo-icon svg { width: 26px; height: 26px; fill: #fff; }
+    .logo-text h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -.02em;
+      line-height: 1.1;
+    }
+    .logo-text p {
+      font-size: .8rem;
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      margin-top: 2px;
+    }
+
+    /* ── Step indicator ───────────────────────────────────────────── */
+    .steps {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 32px;
+    }
+    .step-dot {
+      flex: 1;
+      height: 3px;
+      border-radius: 99px;
+      background: var(--border);
+      transition: background .4s;
+    }
+    .step-dot.active { background: var(--green); }
+    .step-dot.done   { background: var(--green2); }
+
+    /* ── Form ─────────────────────────────────────────────────────── */
+    .field { margin-bottom: 20px; }
+    label {
+      display: block;
+      font-size: .8rem;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+      font-family: 'Space Mono', monospace;
+    }
+    input[type="tel"] {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      font-size: 1rem;
+      padding: 14px 16px;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    input[type="tel"]:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(37,211,102,.12);
+    }
+    input[type="tel"]::placeholder { color: var(--muted); }
+
+    /* ── Photo upload zone ────────────────────────────────────────── */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .25s, background .25s;
+      position: relative;
+      overflow: hidden;
+    }
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: var(--green);
+      background: rgba(37,211,102,.04);
+    }
+    .upload-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+    .upload-icon { font-size: 2.2rem; margin-bottom: 8px; }
+    .upload-label {
+      font-size: .9rem;
+      color: var(--muted);
+    }
+    .upload-label span { color: var(--green); font-weight: 600; }
+
+    /* Preview bubble */
+    .preview-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+    }
+    .preview-wrap img {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--green);
+    }
+    .preview-info { flex: 1; min-width: 0; }
+    .preview-name {
+      font-size: .85rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .preview-size { font-size: .75rem; color: var(--muted); font-family: 'Space Mono', monospace; }
+    .preview-remove {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 1.1rem;
+      padding: 4px;
+      transition: color .2s;
+    }
+    .preview-remove:hover { color: var(--danger); }
+
+    /* ── Button ───────────────────────────────────────────────────── */
+    .btn {
+      width: 100%;
+      padding: 15px;
+      border: none;
+      border-radius: var(--radius);
+      font-family: 'Sora', sans-serif;
+      font-size: .95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .15s, box-shadow .15s, opacity .2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      letter-spacing: .01em;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--green), var(--green2));
+      color: #fff;
+      box-shadow: 0 6px 24px rgba(37,211,102,.3);
+    }
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 32px rgba(37,211,102,.4);
+    }
+    .btn-primary:active:not(:disabled) { transform: scale(.98); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── Pairing code display ─────────────────────────────────────── */
+    .code-wrap {
+      text-align: center;
+      padding: 12px 0 24px;
+    }
+    .code-hint {
+      font-size: .82rem;
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      margin-bottom: 18px;
+      line-height: 1.6;
+    }
+    .code-box {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg);
+      border: 1px solid var(--green);
+      border-radius: var(--radius);
+      padding: 14px 24px;
+      box-shadow: 0 0 32px rgba(37,211,102,.12);
+    }
+    .code-digits {
+      font-family: 'Space Mono', monospace;
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: .25em;
+      color: var(--lime);
+    }
+    .copy-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 1.1rem;
+      padding: 4px 6px;
+      border-radius: 6px;
+      transition: background .2s, color .2s;
+    }
+    .copy-btn:hover { background: rgba(37,211,102,.1); color: var(--green); }
+    .copy-feedback {
+      font-size: .75rem;
+      color: var(--green);
+      font-family: 'Space Mono', monospace;
+      margin-top: 8px;
+      min-height: 18px;
+      transition: opacity .3s;
+    }
+
+    /* ── Status cards ─────────────────────────────────────────────── */
+    .status-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 0;
+    }
+    .spinner {
+      width: 52px;
+      height: 52px;
+      border: 3px solid var(--border);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .status-icon { font-size: 3rem; }
+    .status-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      text-align: center;
+    }
+    .status-sub {
+      font-size: .82rem;
+      color: var(--muted);
+      text-align: center;
+      font-family: 'Space Mono', monospace;
+      line-height: 1.6;
+    }
+
+    /* Error */
+    .error-box {
+      background: rgba(255,91,91,.08);
+      border: 1px solid rgba(255,91,91,.3);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      font-size: .82rem;
+      color: var(--danger);
+      font-family: 'Space Mono', monospace;
+      line-height: 1.5;
+    }
+
+    /* ── Screens (shown/hidden) ───────────────────────────────────── */
+    .screen { display: none; }
+    .screen.active { display: block; animation: fadeUp .4s cubic-bezier(.22,1,.36,1) both; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Footer ───────────────────────────────────────────────────── */
+    .footer {
+      margin-top: 28px;
+      font-size: .75rem;
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      text-align: center;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+
+  <!-- Step dots -->
+  <div class="steps">
+    <div class="step-dot active" id="dot1"></div>
+    <div class="step-dot" id="dot2"></div>
+    <div class="step-dot" id="dot3"></div>
+  </div>
+
+  <!-- Logo -->
+  <div class="logo-wrap">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+      </svg>
+    </div>
+    <div class="logo-text">
+      <h1>WA Profile Setter</h1>
+      <p>Powered by Baileys · Multi-session</p>
+    </div>
+  </div>
+
+  <!-- ── Screen 1: Upload form ─────────────────────────── -->
+  <div class="screen active" id="screen-upload">
+    <div class="field">
+      <label>WhatsApp Number</label>
+      <input type="tel" id="phone" placeholder="e.g. 15551234567 (with country code)" autocomplete="tel" />
+    </div>
+
+    <div class="field">
+      <label>Profile Photo</label>
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="photoInput" accept="image/*" />
+        <div id="uploadPlaceholder">
+          <div class="upload-icon">🖼️</div>
+          <div class="upload-label">Drop image here or <span>browse</span></div>
+        </div>
+        <div id="uploadPreview" style="display:none;">
+          <!-- filled by JS -->
+        </div>
+      </div>
+    </div>
+
+    <div id="formError" class="error-box" style="display:none;margin-bottom:16px;"></div>
+
+    <button class="btn btn-primary" id="startBtn" onclick="startSession()">
+      <span>🔗</span> Connect &amp; Set Photo
+    </button>
+  </div>
+
+  <!-- ── Screen 2: Pairing code ────────────────────────── -->
+  <div class="screen" id="screen-pairing">
+    <div class="code-wrap">
+      <p class="code-hint">
+        Open WhatsApp → <strong>Settings</strong> → <strong>Linked Devices</strong><br/>
+        → <strong>Link a Device</strong> → enter this code:
+      </p>
+      <div class="code-box">
+        <span class="code-digits" id="pairingCodeDisplay">· · · ·</span>
+        <button class="copy-btn" title="Copy code" onclick="copyCode()">📋</button>
+      </div>
+      <div class="copy-feedback" id="copyFeedback"></div>
+    </div>
+    <div class="status-panel">
+      <div class="spinner"></div>
+      <div class="status-title">Waiting for device…</div>
+      <div class="status-sub">The code expires in a few minutes.<br/>Enter it quickly!</div>
+    </div>
+  </div>
+
+  <!-- ── Screen 3: Setting PFP ─────────────────────────── -->
+  <div class="screen" id="screen-setting">
+    <div class="status-panel">
+      <div class="spinner"></div>
+      <div class="status-title">Setting profile picture…</div>
+      <div class="status-sub">Device connected ✓<br/>Uploading your photo to WhatsApp</div>
+    </div>
+  </div>
+
+  <!-- ── Screen 4: Done ─────────────────────────────────── -->
+  <div class="screen" id="screen-done">
+    <div class="status-panel">
+      <div class="status-icon">🎉</div>
+      <div class="status-title">Profile picture updated!</div>
+      <div class="status-sub">Session has been logged out<br/>and all data has been deleted.</div>
+    </div>
+    <button class="btn btn-primary" style="margin-top:28px;" onclick="resetApp()">
+      <span>↩</span> Set another photo
+    </button>
+  </div>
+
+  <!-- ── Screen 5: Error ────────────────────────────────── -->
+  <div class="screen" id="screen-error">
+    <div class="status-panel">
+      <div class="status-icon">❌</div>
+      <div class="status-title">Something went wrong</div>
+      <div class="error-box" id="errorMessage" style="margin-top:8px;"></div>
+    </div>
+    <button class="btn btn-primary" style="margin-top:28px;" onclick="resetApp()">
+      <span>↩</span> Try again
+    </button>
+  </div>
+
+</div><!-- /card -->
+
+<div class="footer">
+  Session data is wiped immediately after completion · No data is stored
+</div>
+
+<script>
+  // ── State ─────────────────────────────────────────────
+  let sessionId = null;
+  let pollTimer = null;
+  let selectedFile = null;
+
+  // ── Step dots ─────────────────────────────────────────
+  function setStep(n) {
+    for (let i = 1; i <= 3; i++) {
+      const d = document.getElementById(`dot${i}`);
+      d.className = 'step-dot' + (i < n ? ' done' : i === n ? ' active' : '');
+    }
+  }
+
+  // ── Screen switcher ───────────────────────────────────
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  // ── File selection / drag-drop ────────────────────────
+  const zone = document.getElementById('uploadZone');
+  const fileInput = document.getElementById('photoInput');
+
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    const f = e.dataTransfer?.files[0];
+    if (f && f.type.startsWith('image/')) setFile(f);
+  });
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) setFile(fileInput.files[0]);
+  });
+
+  function setFile(file) {
+    selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById('uploadPlaceholder').style.display = 'none';
+      const preview = document.getElementById('uploadPreview');
+      preview.style.display = 'block';
+      const size = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+      preview.innerHTML = `
+        <div class="preview-wrap">
+          <img src="${e.target.result}" alt="preview" />
+          <div class="preview-info">
+            <div class="preview-name">${file.name}</div>
+            <div class="preview-size">${size}</div>
+          </div>
+          <button class="preview-remove" onclick="clearFile(event)" title="Remove">✕</button>
+        </div>`;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearFile(e) {
+    e?.stopPropagation();
+    selectedFile = null;
+    fileInput.value = '';
+    document.getElementById('uploadPlaceholder').style.display = 'block';
+    document.getElementById('uploadPreview').style.display = 'none';
+    document.getElementById('uploadPreview').innerHTML = '';
+  }
+
+  // ── Start session ─────────────────────────────────────
+  async function startSession() {
+    const phone = document.getElementById('phone').value.trim();
+    const errBox = document.getElementById('formError');
+    errBox.style.display = 'none';
+
+    if (!phone) { showErr('Please enter your WhatsApp phone number.'); return; }
+    if (!selectedFile) { showErr('Please select a profile photo.'); return; }
+
+    const btn = document.getElementById('startBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner" style="width:18px;height:18px;border-width:2px;margin-right:8px;"></span> Connecting…';
+
+    const fd = new FormData();
+    fd.append('phone', phone);
+    fd.append('photo', selectedFile);
+
+    try {
+      const res = await fetch('/api/start', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Server error');
+      sessionId = data.sessionId;
+      setStep(2);
+      showScreen('screen-pairing');
+      startPolling();
+    } catch (err) {
+      showErr(err.message);
+      btn.disabled = false;
+      btn.innerHTML = '<span>🔗</span> Connect & Set Photo';
+    }
+
+    function showErr(msg) {
+      errBox.textContent = msg;
+      errBox.style.display = 'block';
+    }
+  }
+
+  // ── Polling ───────────────────────────────────────────
+  function startPolling() {
+    pollTimer = setInterval(poll, 1500);
+  }
+
+  async function poll() {
+    if (!sessionId) return;
+    try {
+      const res = await fetch(`/api/status/${sessionId}`);
+      if (res.status === 404) { stopPolling(); return; }
+      const data = await res.json();
+
+      if (data.pairingCode && document.getElementById('pairingCodeDisplay').textContent.includes('·')) {
+        document.getElementById('pairingCodeDisplay').textContent = data.pairingCode;
+      }
+
+      if (data.status === 'setting_pfp') {
+        setStep(3);
+        showScreen('screen-setting');
+      } else if (data.status === 'done') {
+        stopPolling();
+        setStep(3);
+        document.querySelector('#dot3').classList.add('done');
+        showScreen('screen-done');
+        sessionId = null;
+      } else if (data.status === 'error') {
+        stopPolling();
+        document.getElementById('errorMessage').textContent = data.error || 'Unknown error';
+        showScreen('screen-error');
+        sessionId = null;
+      }
+    } catch (_) { /* network hiccup, retry next tick */ }
+  }
+
+  function stopPolling() {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+
+  // ── Copy code ─────────────────────────────────────────
+  async function copyCode() {
+    const code = document.getElementById('pairingCodeDisplay').textContent;
+    if (code.includes('·')) return;
+    try {
+      await navigator.clipboard.writeText(code.replace(/-/g, ''));
+      const fb = document.getElementById('copyFeedback');
+      fb.textContent = 'Copied!';
+      setTimeout(() => fb.textContent = '', 2000);
+    } catch (_) {}
+  }
+
+  // ── Reset ─────────────────────────────────────────────
+  function resetApp() {
+    stopPolling();
+    sessionId = null;
+    clearFile();
+    document.getElementById('phone').value = '';
+    document.getElementById('formError').style.display = 'none';
+    const btn = document.getElementById('startBtn');
+    btn.disabled = false;
+    btn.innerHTML = '<span>🔗</span> Connect & Set Photo';
+    document.getElementById('pairingCodeDisplay').textContent = '· · · ·';
+    setStep(1);
+    showScreen('screen-upload');
+  }
+</script>
+</body>
+</html>
